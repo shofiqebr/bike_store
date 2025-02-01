@@ -1,4 +1,4 @@
-import { IProduct } from './product.interface';
+// import { IProduct } from './product.interface';
 import { Request, Response } from 'express';
 // import Product from './product.model';
 import { productService } from './product.service';
