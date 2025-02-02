@@ -4,10 +4,10 @@ export interface IProduct {
     name: string;
     brand: string;
     price: number;
+    model: string;
     category: Category;
     description : string;
-    quantity : number;
-    inStock  : boolean;
+    stock: number;
     // createdAt?: Date; 
     // updatedAt?: Date;
   }
