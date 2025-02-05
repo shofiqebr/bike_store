@@ -1,60 +1,70 @@
 import Order from "./order.model";
 import Product from "../product/product.model";
 import { IRevenueResponse } from "../revenue/revenue.interface";
+// import { IUser } from "../user/user.interface";
+import { StatusCodes } from "http-status-codes";
+import AppError from "../../errors/AppError";
 
-const createOrder = async (payload: { email: string; product: string; quantity: number; totalPrice: number }) => {
-  const { email, product: productId, quantity, totalPrice } = payload;
-
-  // Find the product by ID
-  const product = await Product.findById(payload.product);
-
-  if (!product) {
-    throw new Error("Product not found");
+const createOrder = async (
+  payload: { user: string; products: { product: string; quantity: number }[] }
+) => {
+  // Validate the payload
+  if (!payload.products?.length) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "Order must have products");
   }
 
-  // Check if there is enough stock
-  if (product.quantity < quantity) {
-    throw new Error("Insufficient stock");
-  }
+  let totalPrice = 0;
 
-  // Create the order
+  // Fetch product details and calculate total price
+  const productDetails = await Promise.all(
+    payload.products.map(async (item) => {
+      const product = await Product.findById(item.product);
+
+      if (!product) {
+        throw new AppError(StatusCodes.NOT_FOUND, "Product not found");
+      }
+
+      const subtotal = product.price * item.quantity;
+      totalPrice += subtotal;
+
+      return {
+        product: product._id,
+        quantity: item.quantity,
+      };
+    })
+  );
+
   const order = await Order.create({
-    email,
-    product: productId,
-    quantity,
+    user: payload.user,
+    products: productDetails,
     totalPrice,
   });
 
-  // Update the product inventory
-  product.quantity -= quantity;
-  product.inStock = product.quantity > 0;
-  await product.save();
-
   return order;
-};
+}
 
 const calculateRevenue = async (): Promise<IRevenueResponse> => {
   const result = await Order.aggregate([
     {
+      $unwind: "$products",
+    },
+    {
       $lookup: {
         from: "products",
-        localField: "product",
+        localField: "products.product",
         foreignField: "_id",
         as: "productDetails",
       },
     },
-    { $unwind: "$productDetails" },
     {
-      $project: {
-        totalRevenue: {
-          $multiply: ["$quantity", "$productDetails.price"],
-        },
-      },
+      $unwind: "$productDetails",
     },
     {
       $group: {
         _id: null,
-        totalRevenue: { $sum: "$totalRevenue" },
+        totalRevenue: {
+          $sum: { $multiply: ["$products.quantity", "$productDetails.price"] },
+        },
       },
     },
   ]);
@@ -66,5 +76,5 @@ const calculateRevenue = async (): Promise<IRevenueResponse> => {
 
 export const orderService = {
   createOrder,
-  calculateRevenue
+  calculateRevenue,
 };
