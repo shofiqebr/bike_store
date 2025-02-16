@@ -1,16 +1,35 @@
 import { z } from "zod";
+import { USER_ROLE } from "./user.constrants";
 
 const userValidationSchema = z.object({
-body: z.object({
-    name: z.string().min(1, "Name is required"),
-    email: z.string().email("Invalid email format"),
-    password: z.string({
-        required_error: "Password is required for your safety"
-    }).max(20, {message: "Password can not be more than 20 characters"}),
+  body: z.object({
+    name: z.string().min(1, { message: "Name is required" }),
 
-})
+    email: z.string().email({ message: "Invalid email format" }),
+
+    role: z
+      .enum(Object.values(USER_ROLE) as [string, ...string[]])
+      .default("customer")
+      .optional(),
+
+    phone: z
+      .string()
+      .regex(/^\d{10,15}$/, { message: "Phone number must be 10-15 digits" })
+      .optional(),
+
+    address: z.string().max(100, { message: "Address cannot exceed 100 characters" }).optional(),
+
+    city: z.string().max(50, { message: "City cannot exceed 50 characters" }).optional(),
+  }),
+});
+
+const loginValidationSchema = z.object({
+  body: z.object({
+    email: z.string().email({ message: "Invalid email format" }),
+  }),
 });
 
 export const UserValidation = {
-    userValidationSchema
-}
+  userValidationSchema,
+  loginValidationSchema,
+};

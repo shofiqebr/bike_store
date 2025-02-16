@@ -27,6 +27,13 @@ const login = catchAsync(async(req: Request, res: Response)=>{
     const result = await AuthService.login(req.body);
     // const tokenWithBearer = `Bearer ${result?.token}`;
 
+      // Store token in an HTTP-only cookie
+  res.cookie("token", result.token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days
+  });
+
     sendResponse(res,{
         statusCode: StatusCodes.ACCEPTED,
         status: true,
@@ -37,7 +44,21 @@ const login = catchAsync(async(req: Request, res: Response)=>{
     })
 })
 
+const logout = catchAsync(async (req: Request, res: Response) => {
+    res.clearCookie("token");
+  
+    sendResponse(res, {
+      status: true,
+      message: "User logged out successfully",
+      statusCode: StatusCodes.OK,
+
+      data: {}
+
+    });
+  });
+
 export const AuthControllers = {
     register,
-    login
+    login,
+    logout
 }

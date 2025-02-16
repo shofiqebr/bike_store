@@ -41,7 +41,12 @@ const login = async (payload: {email: string; password: string}) =>{
 
 }
 
+const logout = async () => {
+    return true; 
+  };
+
 export const AuthService = {
     register,
-    login
+    login,
+    logout
 }
