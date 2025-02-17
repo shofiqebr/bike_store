@@ -1,3 +1,4 @@
+import config from "../../app/config";
 import { IUser } from "../user/user.interface";
 import User from "../user/user.model";
 import bcrypt from 'bcrypt'
@@ -35,8 +36,8 @@ const login = async (payload: {email: string; password: string}) =>{
         role: user?.role,
     }
 
-    const token = jwt.sign(jwtPayload, "secret", { expiresIn: '15d' });
-
+    const token = jwt.sign(jwtPayload, config.jwt.access_secret, { expiresIn: '15d' });
+    console.log("JWT Secret during signing:", config.jwt.access_secret);
     return {token, user};
 
 }
