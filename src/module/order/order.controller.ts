@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { orderService } from "./order.service";
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
+import { StatusCodes } from "http-status-codes";
 
 // const createOrder = async (req: Request, res: Response): Promise<void> => {
 //   try {
@@ -67,6 +70,48 @@ const createOrder = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const getAllOrders = catchAsync(async (req: Request, res: Response) => {
+  const orders = await orderService.getAllOrders();
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    status: true,
+    message: "Orders retrieved successfully",
+    data: orders,
+  });
+});
+
+const getOrderById = catchAsync(async (req: Request, res: Response) => {
+  const order = await orderService.getOrderById(req.params.id);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    status: true,
+    message: "Order details retrieved",
+    data: order,
+  });              
+});
+
+const updateOrderStatus = catchAsync(async (req: Request, res: Response) => {
+  const order = await orderService.updateOrderStatus(req.params.id, req.body.status);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    status: true,
+    message: "Order status updated",
+    data: order,
+  }); 
+});
+
+const deleteOrder = catchAsync(async (req: Request, res: Response) => {
+  const result = await orderService.deleteOrder(req.params.id);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    status: true,
+    message: 'Order Deleted Successfully',
+    data: result.message
+  });
+});
+ 
+
+
 const getRevenue = async (req: Request, res: Response): Promise<void> => {
   try {
     const revenue = await orderService.calculateRevenue();
@@ -87,5 +132,9 @@ const getRevenue = async (req: Request, res: Response): Promise<void> => {
 
 export const orderController = {
   createOrder,
+  getAllOrders,
+  getOrderById,
+  updateOrderStatus,
+  deleteOrder,
   getRevenue
 };

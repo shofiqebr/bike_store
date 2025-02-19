@@ -56,6 +56,57 @@ const createOrder = async (
   return order;
 }
 
+const getAllOrders = async () => {
+  const orders = await Order.find().populate("user", "email").populate("products.product");
+  return orders;
+};
+
+const getOrderById = async (orderId: string) => {
+  const order = await Order.findById(orderId)
+    .populate("user", "email")
+    .populate("products.product");
+
+  if (!order) {
+    throw new AppError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+
+  return order;
+};
+
+const updateOrderStatus = async (orderId: string, status: string) => {
+  const validStatuses = ["Pending", "Paid", "Shipped", "Completed", "Cancelled"];
+
+  if (!validStatuses.includes(status)) {
+    throw new AppError(StatusCodes.BAD_REQUEST, "Invalid order status");
+  }
+
+  const order = await Order.findByIdAndUpdate(
+    orderId,
+    { status },
+    { new: true }
+  );
+
+  if (!order) {
+    throw new AppError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+
+  return order;
+};
+
+const deleteOrder = async (orderId: string) => {
+  const order = await Order.findByIdAndDelete(orderId);
+
+  if (!order) {
+    throw new AppError(StatusCodes.NOT_FOUND, "Order not found");
+  }
+
+  return { message: "Order deleted successfully" };
+};
+
+
+
+
+
 const calculateRevenue = async (): Promise<IRevenueResponse> => {
   const result = await Order.aggregate([
     {
@@ -89,5 +140,9 @@ const calculateRevenue = async (): Promise<IRevenueResponse> => {
 
 export const orderService = {
   createOrder,
+  getAllOrders,
+  getOrderById,
+  updateOrderStatus,
+  deleteOrder,
   calculateRevenue,
 };

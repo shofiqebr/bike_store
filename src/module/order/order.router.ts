@@ -20,6 +20,10 @@ const orderRouter = Router();
 
 // POST route to create an order
 orderRouter.post("/api/orders",auth(USER_ROLE.customer), orderController.createOrder);
+orderRouter.get("/api/orders", auth(USER_ROLE.customer), orderController.getAllOrders);
+orderRouter.get("/api/orders/:id", auth(USER_ROLE.customer), orderController.getOrderById);
+orderRouter.patch("/api/orders/:id/status", auth(USER_ROLE.customer), orderController.updateOrderStatus);
+orderRouter.delete("/api/orders/:id", auth(USER_ROLE.customer), orderController.deleteOrder);
 
 orderRouter.get("/api/orders/revenue", orderController.getRevenue);
 export default orderRouter;
