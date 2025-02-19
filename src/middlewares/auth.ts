@@ -24,9 +24,9 @@ const auth = (...requiredRoles: string[]) => {
     if (!token) {
       throw new AppError(StatusCodes.UNAUTHORIZED, "You are not authorized!");
     }
-    console.log("JWT Secret:", config.jwt.access_secret);
-    console.log("Decoded token:", jwt.decode(token));
-    console.log("Received Token:", req.headers.authorization);
+    // console.log("JWT Secret:", config.jwt.access_secret);
+    // console.log("Decoded token:", jwt.decode(token));
+    // console.log("Received Token:", req.headers.authorization);
 
 
 

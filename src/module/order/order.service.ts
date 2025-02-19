@@ -13,6 +13,8 @@ const createOrder = async (
     throw new AppError(StatusCodes.BAD_REQUEST, "Order must have products");
   }
 
+  
+
   let totalPrice = 0;
 
   // Fetch product details and calculate total price
@@ -23,6 +25,17 @@ const createOrder = async (
       if (!product) {
         throw new AppError(StatusCodes.NOT_FOUND, "Product not found");
       }
+
+        if (product.stock < item.quantity) {
+          throw new AppError(
+            StatusCodes.BAD_REQUEST,
+            `Not enough stock for ${product.name}`
+          );
+        }
+  
+        product.stock -= item.quantity;
+        await product.save(); // Save updated stock to DB
+  
 
       const subtotal = product.price * item.quantity;
       totalPrice += subtotal;
