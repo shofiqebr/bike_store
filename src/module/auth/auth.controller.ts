@@ -23,6 +23,18 @@ const register = catchAsync(async(req: Request, res: Response)=> {
     
 })
 
+
+const getAllUsers = catchAsync(async (req: Request, res: Response) => {
+  const result = await AuthService.getAllUsers();
+
+  sendResponse(res, {
+    status: true,
+    message: "Users fetched successfully",
+    statusCode: StatusCodes.OK,
+    data: result,
+  });
+});
+
 const login = catchAsync(async(req: Request, res: Response)=>{
     const result = await AuthService.login(req.body);
     // const tokenWithBearer = `Bearer ${result?.token}`;
@@ -59,6 +71,7 @@ const logout = catchAsync(async (req: Request, res: Response) => {
 
 export const AuthControllers = {
     register,
+    getAllUsers,
     login,
     logout
 }

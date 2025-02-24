@@ -10,6 +10,11 @@ const register = async( payload: IUser) => {
     return result
 }
 
+const getAllUsers = async() => {  
+      const users = await User.find(); // Fetch all users
+        return users; 
+}
+
 const login = async (payload: {email: string; password: string}) =>{
     const user = await User.findOne({email: payload?.email}).select("+password")
     if (!user){
@@ -48,6 +53,7 @@ const logout = async () => {
 
 export const AuthService = {
     register,
+    getAllUsers,
     login,
     logout
 }

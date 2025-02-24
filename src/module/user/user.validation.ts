@@ -14,7 +14,7 @@ const userValidationSchema = z.object({
 
     phone: z
       .string()
-      .regex(/^\d{10,15}$/, { message: "Phone number must be 10-15 digits" })
+      // .regex(/^\d{3,15}$/, { message: "Phone number must be 3-15 digits" })
       .optional(),
 
     address: z.string().max(100, { message: "Address cannot exceed 100 characters" }).optional(),
