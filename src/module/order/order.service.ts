@@ -4,16 +4,21 @@ import { IRevenueResponse } from "../revenue/revenue.interface";
 // import { IUser } from "../user/user.interface";
 import { StatusCodes } from "http-status-codes";
 import AppError from "../../errors/AppError";
+import User from "../user/user.model";
+import { orderUtils } from "./order.utils";
 
 const createOrder = async (
-  payload: { user: string; products: { product: string; quantity: number }[] }
+  payload: { user: string; products: { product: string; quantity: number }[]; }, client_ip: string, 
 ) => {
   // Validate the payload
   if (!payload.products?.length) {
     throw new AppError(StatusCodes.BAD_REQUEST, "Order must have products");
   }
 
-  
+  const user = await User.findById(payload.user);
+  if (!user) {
+    throw new AppError(StatusCodes.NOT_FOUND, "User not found");
+  }
 
   let totalPrice = 0;
 
@@ -53,8 +58,54 @@ const createOrder = async (
     totalPrice,
   });
 
-  return order;
+  console.log(user)
+  // payment integration
+  const shurjopayPayload = {
+    amount: totalPrice,
+    order_id: order._id,
+    currency: "BDT",
+    customer_name: user.name || '',
+    customer_address: user.address || '',
+    customer_email: user.email || '',
+    customer_phone: user.phone || '',
+    customer_city: user.city || '',
+    client_ip,
+  };
+
+  const payment = await orderUtils.makePaymentAsync(shurjopayPayload);
+
+  return {order, payment};
 }
+
+const verifyPayment = async (order_id: string) => {
+  const verifiedPayment = await orderUtils.verifyPaymentAsync(order_id);
+
+  if (verifiedPayment.length) {
+    await Order.findOneAndUpdate(
+      {
+        "transaction.id": order_id,
+      },
+      {
+        "transaction.bank_status": verifiedPayment[0].bank_status,
+        "transaction.sp_code": verifiedPayment[0].sp_code,
+        "transaction.sp_message": verifiedPayment[0].sp_message,
+        "transaction.transactionStatus": verifiedPayment[0].transaction_status,
+        "transaction.method": verifiedPayment[0].method,
+        "transaction.date_time": verifiedPayment[0].date_time,
+        status:
+          verifiedPayment[0].bank_status == "Success"
+            ? "Paid"
+            : verifiedPayment[0].bank_status == "Failed"
+            ? "Pending"
+            : verifiedPayment[0].bank_status == "Cancel"
+            ? "Cancelled"
+            : "",
+      }
+    );
+  }
+
+  return verifiedPayment;
+};
 
 const getAllOrders = async () => {
   const orders = await Order.find().populate("user", "email").populate("products.product");
@@ -140,6 +191,7 @@ const calculateRevenue = async (): Promise<IRevenueResponse> => {
 
 export const orderService = {
   createOrder,
+  verifyPayment,
   getAllOrders,
   getOrderById,
   updateOrderStatus,

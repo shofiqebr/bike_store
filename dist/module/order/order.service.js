@@ -15,52 +15,137 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.orderService = void 0;
 const order_model_1 = __importDefault(require("./order.model"));
 const product_model_1 = __importDefault(require("../product/product.model"));
-const createOrder = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const { email, product: productId, quantity, totalPrice } = payload;
-    // Find the product by ID
-    const product = yield product_model_1.default.findById(payload.product);
-    if (!product) {
-        throw new Error("Product not found");
+// import { IUser } from "../user/user.interface";
+const http_status_codes_1 = require("http-status-codes");
+const AppError_1 = __importDefault(require("../../errors/AppError"));
+const user_model_1 = __importDefault(require("../user/user.model"));
+const order_utils_1 = require("./order.utils");
+const createOrder = (payload, client_ip) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    // Validate the payload
+    if (!((_a = payload.products) === null || _a === void 0 ? void 0 : _a.length)) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Order must have products");
     }
-    // Check if there is enough stock
-    if (product.quantity < quantity) {
-        throw new Error("Insufficient stock");
+    const user = yield user_model_1.default.findById(payload.user);
+    if (!user) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "User not found");
     }
-    // Create the order
+    let totalPrice = 0;
+    // Fetch product details and calculate total price
+    const productDetails = yield Promise.all(payload.products.map((item) => __awaiter(void 0, void 0, void 0, function* () {
+        const product = yield product_model_1.default.findById(item.product);
+        if (!product) {
+            throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "Product not found");
+        }
+        if (product.stock < item.quantity) {
+            throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, `Not enough stock for ${product.name}`);
+        }
+        product.stock -= item.quantity;
+        yield product.save(); // Save updated stock to DB
+        const subtotal = product.price * item.quantity;
+        totalPrice += subtotal;
+        return {
+            product: product._id,
+            quantity: item.quantity,
+        };
+    })));
     const order = yield order_model_1.default.create({
-        email,
-        product: productId,
-        quantity,
+        user: payload.user,
+        products: productDetails,
         totalPrice,
     });
-    // Update the product inventory
-    product.quantity -= quantity;
-    product.inStock = product.quantity > 0;
-    yield product.save();
+    console.log(user);
+    // payment integration
+    const shurjopayPayload = {
+        amount: totalPrice,
+        order_id: order._id,
+        currency: "BDT",
+        customer_name: user.name || '',
+        customer_address: user.address || '',
+        customer_email: user.email || '',
+        customer_phone: user.phone || '',
+        customer_city: user.city || '',
+        client_ip,
+    };
+    const payment = yield order_utils_1.orderUtils.makePaymentAsync(shurjopayPayload);
+    return { order, payment };
+});
+const verifyPayment = (order_id) => __awaiter(void 0, void 0, void 0, function* () {
+    const verifiedPayment = yield order_utils_1.orderUtils.verifyPaymentAsync(order_id);
+    if (verifiedPayment.length) {
+        yield order_model_1.default.findOneAndUpdate({
+            "transaction.id": order_id,
+        }, {
+            "transaction.bank_status": verifiedPayment[0].bank_status,
+            "transaction.sp_code": verifiedPayment[0].sp_code,
+            "transaction.sp_message": verifiedPayment[0].sp_message,
+            "transaction.transactionStatus": verifiedPayment[0].transaction_status,
+            "transaction.method": verifiedPayment[0].method,
+            "transaction.date_time": verifiedPayment[0].date_time,
+            status: verifiedPayment[0].bank_status == "Success"
+                ? "Paid"
+                : verifiedPayment[0].bank_status == "Failed"
+                    ? "Pending"
+                    : verifiedPayment[0].bank_status == "Cancel"
+                        ? "Cancelled"
+                        : "",
+        });
+    }
+    return verifiedPayment;
+});
+const getAllOrders = () => __awaiter(void 0, void 0, void 0, function* () {
+    const orders = yield order_model_1.default.find().populate("user", "email").populate("products.product");
+    return orders;
+});
+const getOrderById = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield order_model_1.default.findById(orderId)
+        .populate("user", "email")
+        .populate("products.product");
+    if (!order) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "Order not found");
+    }
     return order;
+});
+const updateOrderStatus = (orderId, status) => __awaiter(void 0, void 0, void 0, function* () {
+    const validStatuses = ["Pending", "Paid", "Shipped", "Completed", "Cancelled"];
+    if (!validStatuses.includes(status)) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.BAD_REQUEST, "Invalid order status");
+    }
+    const order = yield order_model_1.default.findByIdAndUpdate(orderId, { status }, { new: true });
+    if (!order) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "Order not found");
+    }
+    return order;
+});
+const deleteOrder = (orderId) => __awaiter(void 0, void 0, void 0, function* () {
+    const order = yield order_model_1.default.findByIdAndDelete(orderId);
+    if (!order) {
+        throw new AppError_1.default(http_status_codes_1.StatusCodes.NOT_FOUND, "Order not found");
+    }
+    return { message: "Order deleted successfully" };
 });
 const calculateRevenue = () => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield order_model_1.default.aggregate([
         {
+            $unwind: "$products",
+        },
+        {
             $lookup: {
                 from: "products",
-                localField: "product",
+                localField: "products.product",
                 foreignField: "_id",
                 as: "productDetails",
             },
         },
-        { $unwind: "$productDetails" },
         {
-            $project: {
-                totalRevenue: {
-                    $multiply: ["$quantity", "$productDetails.price"],
-                },
-            },
+            $unwind: "$productDetails",
         },
         {
             $group: {
                 _id: null,
-                totalRevenue: { $sum: "$totalRevenue" },
+                totalRevenue: {
+                    $sum: { $multiply: ["$products.quantity", "$productDetails.price"] },
+                },
             },
         },
     ]);
@@ -70,5 +155,10 @@ const calculateRevenue = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.orderService = {
     createOrder,
-    calculateRevenue
+    verifyPayment,
+    getAllOrders,
+    getOrderById,
+    updateOrderStatus,
+    deleteOrder,
+    calculateRevenue,
 };

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from "express";
 import { orderService } from "./order.service";
 import catchAsync from "../../utils/catchAsync";
@@ -41,8 +42,7 @@ const createOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const payload = req.body;
 
-    // Delegate to service
-    const order = await orderService.createOrder(payload);
+    const order = await orderService.createOrder( payload, req.ip!);
 
     res.status(201).json({
       message: "Order created successfully",
@@ -69,6 +69,16 @@ const createOrder = async (req: Request, res: Response): Promise<void> => {
     }
   }
 };
+
+const verifyPayment = catchAsync(async (req, res) => {
+  const order = await orderService.verifyPayment(req.query.order_id as string);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.CREATED,
+    message: "Order verified successfully",
+    data: order,
+  });
+});
 
 const getAllOrders = catchAsync(async (req: Request, res: Response) => {
   const orders = await orderService.getAllOrders();
@@ -132,6 +142,7 @@ const getRevenue = async (req: Request, res: Response): Promise<void> => {
 
 export const orderController = {
   createOrder,
+  verifyPayment,
   getAllOrders,
   getOrderById,
   updateOrderStatus,

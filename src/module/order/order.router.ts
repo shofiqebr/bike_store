@@ -25,5 +25,7 @@ orderRouter.get("/api/orders/:id", auth(USER_ROLE.customer), orderController.get
 orderRouter.patch("/api/orders/:id/status", auth(USER_ROLE.customer), orderController.updateOrderStatus);
 orderRouter.delete("/api/orders/:id", auth(USER_ROLE.customer), orderController.deleteOrder);
 
+orderRouter.get("/api/verify", auth(USER_ROLE.customer), orderController.verifyPayment);
+
 orderRouter.get("/api/orders/revenue", orderController.getRevenue);
 export default orderRouter;
