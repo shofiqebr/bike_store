@@ -58,7 +58,7 @@ const createOrder = async (
     totalPrice,
   });
 
-  console.log(user)
+  // console.log(user)
   // payment integration
   const shurjopayPayload = {
     amount: totalPrice,

@@ -54,7 +54,7 @@ const createOrder = (payload, client_ip) => __awaiter(void 0, void 0, void 0, fu
         products: productDetails,
         totalPrice,
     });
-    console.log(user);
+    // console.log(user)
     // payment integration
     const shurjopayPayload = {
         amount: totalPrice,
